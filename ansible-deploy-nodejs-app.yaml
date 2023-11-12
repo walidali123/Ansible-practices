@@ -1,0 +1,63 @@
+---
+- name: Install Node.js and npm, Deploy Node.js App
+  hosts: web1
+  become: yes  # Ensure you have privilege escalation, e.g., sudo
+  vars: 
+    - location: /home/thor/simple-nodejs
+    - version: 1.0.0
+    - destination: /home/walid
+  tasks:
+    - name: Update APT repositories and cache
+      yum:
+        update_cache: yes
+
+    - name: Install the EPEL repository
+      yum:
+        name: epel-release
+        state: present
+    - name: Install Node.js and npm
+      yum:
+        name:
+          - nodejs
+          - npm
+        state: present
+
+
+- name: create new linux user for node app
+  hosts: web1
+  tasks: 
+    - name: create linux user
+      user:
+        name: walid
+        comment: walid admin
+        group: admin 
+
+
+- name: Deploy nodejs app
+  hosts: web1
+  become: True
+  become_user: walid
+  tasks:
+    - name: Unpack the Node.js tar file
+      unarchive:
+        src: "{{location}}/nodejs-app-{{version}}.tgz"
+        dest: "{{destination}}"
+       
+    - name: install dependencies 
+      npm:
+        path: "{{destination}}/package"
+    - name: start the application
+      command: 
+        chdir: "{{destination}}/package/app"
+        cmd: node server
+      async: 1000
+      poll: 0  
+
+    - name: ensure app is running
+      shell: ps aux | grep node
+      register: app_status
+
+    - debug: msg={{app_status}}
+
+      
+  
