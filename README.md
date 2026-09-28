@@ -8,7 +8,7 @@ The scope is infrastructure automation. The applications being deployed were exi
 
 ## Architecture
 
-![Architecture](01-devops-architecture.png)
+![Architecture](images/01-devops-architecture.png)
 
 The engineer runs playbooks from the Ansible control node. The `aws_ec2` inventory plugin looks up running instances in `us-east-1` at run time, so there is no hand-maintained host list. Ansible then connects to each instance over SSH as `ec2-user` with key-based authentication. Each host authenticates to Docker Hub and pulls the images its Compose stack needs.
 
@@ -18,7 +18,7 @@ This repository does not contain a CI/CD pipeline. Deployments are run from the 
 
 ## Infrastructure
 
-![Infrastructure](03-infrastructure.png)
+![Infrastructure](images/03-infrastructure.png)
 
 Four target types are automated:
 
@@ -29,11 +29,27 @@ Four target types are automated:
 
 ## Deployment Flow
 
-![Deployment flow](04-deployment-flow.png)
+![Deployment flow](images/04-deployment-flow.png)
 
 `deploy-docker-with-roles.yaml` runs nine steps in order on every discovered instance. It waits for SSH, installs Python 3 and Docker, installs docker-compose, starts Docker, grants Docker access to `ec2-user`, and tests an image pull. The `start_containers` role then copies the Compose file, logs in to Docker Hub and starts the stack.
 
 Most tasks use declarative modules (`state: present`, `state: started`), and the Nexus playbook checks for an existing install before downloading, so running a playbook again does not repeat finished work.
+
+## Proof of Execution
+
+These terminal captures come from a real run of the Docker deployment playbook against three EC2 instances, using the dynamic inventory. Host names and IP addresses are blurred. The run used an earlier revision of the playbook, before the SSH wait and registry login steps were added.
+
+**Installing Python 3, Docker and docker-compose, then starting the Docker daemon**
+
+![Ansible run, part 1](images/ansible-run-1.png)
+
+**Granting Docker access to ec2-user and installing the Docker SDK for Python**
+
+![Ansible run, part 2](images/ansible-run-2.png)
+
+**Test image pull, copying the Compose file, starting the stack, and the final recap: 3 hosts, 0 unreachable, 0 failed**
+
+![Ansible run, part 3](images/ansible-run-3.png)
 
 ## Security
 
@@ -66,7 +82,7 @@ A separate security diagram is not included because the project does not have en
 
 ## Project Results
 
-- The Docker playbook configured **three EC2 instances in a single run with 0 failed and 0 unreachable hosts**. This is shown in terminal screenshots in the repository from an earlier revision of the playbook.
+- The Docker playbook configured **three EC2 instances in a single run with 0 failed and 0 unreachable hosts**. See Proof of Execution above.
 - Hosts are discovered automatically from AWS, so the same playbook applies to however many instances are running.
 - Container deployment steps are packaged as a role that other playbooks can reuse.
 - Service setup (Docker, Nexus, Node.js) is written down as code and can be repeated, replacing manual server configuration.
